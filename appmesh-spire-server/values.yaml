@@ -5,8 +5,8 @@
 replicaCount: 1
 
 image:
-  repository: gcr.io/spiffe-io/spire-server
-  tag: 0.10.0
+  repository: public.ecr.aws/g0z4v6x0/aws-spire-server
+  tag: latest
   pullPolicy: IfNotPresent
 
 nameOverride: ""
