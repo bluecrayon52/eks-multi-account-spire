@@ -23,6 +23,12 @@ spec:
         - name: spire-config
           configMap:
             name: {{ template "appmesh-spire-server.fullname" . }}
+        - name: front-kubeconfig  # ADDED VOLUME FOR FRONTEND KUBECONFIG
+          configMap:
+            name: front-kubeconfig 
+        - name: back-kubeconfig   # ADDED VOLUME FOR BACKEND KUBECONFIG
+          configMap: 
+            name: back-kubeconfig
       containers:
         - name: spire-server
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -48,6 +54,12 @@ spec:
             - name: spire-data
               mountPath: /run/spire/data
               readOnly: false
+            - name: front-kubeconfig  # ADDED VOLUME FOR FRONTEND KUBECONFIG
+              mountPath: /etc/kubeconfig/frontend
+              readOnly: true 
+            - name: back-kubeconfig   # ADDED VOLUME FOR BACKEND KUBECONFIG
+              mountPath: /etc/kubeconfig/backend
+              readOnly: true
   volumeClaimTemplates:
     - metadata:
         name: spire-data

@@ -34,9 +34,15 @@ data:
       NodeAttestor "k8s_sat" {
         plugin_data {
           clusters = {
-            "k8s-cluster" = {
+            "frontend-k8s-cluster" = {
               use_token_review_api_validation = true
-              service_account_whitelist = ["spire:spire-agent"]
+              service_account_whitelist = ["spire:spire-agent-front"]
+              kube_config_file = "/etc/kubeconfig/frontend/frontend.conf"
+            },
+            "backend-k8s-cluster" = {
+              use_token_review_api_validation = true
+              service_account_whitelist = ["spire:spire-agent-back"]
+              kube_config_file = "/etc/kubeconfig/backend/backend.conf"
             }
           }
         }
