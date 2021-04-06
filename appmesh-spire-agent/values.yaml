@@ -51,3 +51,5 @@ config:
   serverPort: 8081
   #SPIRE Agent Socket Path
   socketPath: /run/spire/sockets/agent.sock
+  # cluster name for k8s_sat node attestor 
+  clusterName: "k8s-cluster"
