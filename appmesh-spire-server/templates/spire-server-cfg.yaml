@@ -58,8 +58,6 @@ data:
 
       Notifier "k8sbundle" {
         plugin_data {
-          kube_config_file_path = "/etc/kubeconfig/frontend/frontend.conf"
-          kube_config_file_path = "/etc/kubeconfig/backend/backend.conf"
         }
       }
     }
