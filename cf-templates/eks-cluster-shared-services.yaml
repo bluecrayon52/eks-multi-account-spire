@@ -20,12 +20,107 @@
       }
     }
   },
-  "Parameters" : {    # add parameters
-    "InstanceTypeParameter" : {
-      "Type" : "String",
-      "Default" : "t2.micro",
-      "AllowedValues" : ["t2.micro", "m1.small", "m1.large"],
-      "Description" : "Enter t2.micro, m1.small, or m1.large. Default is t2.micro."
+  "Parameters": {
+    "EKSClusterName": {
+      "Type": "String",
+      "Default": {
+        "Fn::Join": [
+          "", [
+            "eks-cluster-shared-",
+            {
+              "Ref": "AWS::AccountId"
+            }
+          ]
+        ]
+      },
+      "Description": "Enter the name of the shared-services EKS cluster."
+    },
+    "TGWName": {
+      "Type": "String", 
+      "Default": {
+        "Fn::Join": [
+          "", [
+            "tgw-shared-",
+            {
+              "Ref": "AWS::AccountId"
+            }
+          ]
+        ]
+      },
+      "Description": "Enter the name of the shared-services Transit Gateway."
+    },
+    "FrontendAccountId": {
+      "Type": "String",
+      "AllowedPattern": "^\d{12}$",
+      "ConstraintDescription": "Must be a valid 12 digit numerical account number",
+      "MaxLength": 12,
+      "MinLength": 12,
+      "Description": "Enter the AccountId of the frontend account."
+    },
+    "BackendAccountId": {
+      "Type": "String",
+      "AllowedPattern": "^\d{12}$",
+      "ConstraintDescription": "Must be a valid 12 digit numerical account number",
+      "MaxLength": 12,
+      "MinLength": 12,
+      "Description": "Enter the AccountId of the frontend account."
+    }
+    "SharedVPCPrefix": {
+      "Type": "String",
+      "AllowedPattern": "^(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)(\.)(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)$",
+      "ConstraintDescription": "Must be in hex form with each octet ranging from 0 to 255 (example: 192.170)",
+      "Default": "192.170",
+      "Description": "Enter the 16 bit CIDR prefix for the Shared Services VPC in hex form (example: 192.170)"
+    },
+    "FrontVPCPrefix": {
+      "Type": "String",
+      "AllowedPattern": "^(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)(\.)(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)$",
+      "ConstraintDescription": "Must be in hex form with each octet ranging from 0 to 255 (example: 192.169)",
+      "Default": "192.169",
+      "Description": "Enter the 16 bit CIDR prefix for the Frontend VPC in hex form (example: 192.169)"
+
+    },
+    "BackVPCPrefix": {
+      "Type": "String",
+      "AllowedPattern": "^(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)(\.)(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)$",
+      "ConstraintDescription": "Must be in hex form with each octet ranging from 0 to 255 (example: 192.168)",
+      "Default": "192.168",
+      "Description": "Enter the 16 bit CIDR prefix for the Backend VPC in hex form (example: 192.168)"
+
+    }
+  },
+  "Conditions": {
+    "VPCOctetsNoMatch" : {
+      "Fn::Not": [{
+        "Fn::Equals": [
+          { 
+            "Fn::Select": [ 
+              "0", 
+              { 
+                "Fn::Split": [
+                  ".", 
+                  {
+                    "Ref": "FrontVPCPrefix"
+                  }
+                ]
+              }
+            ] 
+          },
+          {
+            "Fn::Select": [ 
+              "0", 
+              { 
+                "Fn::Split": [
+                  ".", 
+                  {
+                    "Ref": "BackVPCPrefix"
+                  }
+                ]
+              }
+            ] 
+          }
+        ]
+      }]
     }
   },
   "Resources": {
@@ -49,7 +144,9 @@
     "ControlPlane": {
       "Type": "AWS::EKS::Cluster",
       "Properties": {
-        "Name": "eks-cluster-shared", # param 
+        "Name": {
+          "Ref": "EKSClusterName" 
+        }, 
         "ResourcesVpcConfig": {
           "SecurityGroupIds": [
             {
@@ -58,13 +155,22 @@
           ],
           "SubnetIds": [
             {
-              "Ref": "SubnetPublicUSEAST2A" # param region
+              "Ref": "SubnetPublicA"
             },
             {
-              "Ref": "SubnetPublicUSEAST2B"
+              "Ref": "SubnetPublicB"
             },
             {
-              "Ref": "SubnetPublicUSEAST2C"
+              "Ref": "SubnetPublicC"
+            },
+            {
+              "Ref": "SubnetPrivateA"
+            },
+            {
+              "Ref": "SubnetPrivateB"
+            },
+            {
+              "Ref": "SubnetPrivateC"
             }
           ]
         },
@@ -152,7 +258,16 @@
         "FromPort": 0,
         "ToPort": 65535,
         "IpProtocol": "-1",
-        "CidrIp": "192.169.0.0/16",
+        "CidrIp":  {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "FrontVPCPrefix"
+              },
+              ".0.0/16"
+            ]
+          ]
+        },
         "GroupId": {
           "Fn::GetAtt": [
             "ControlPlane",
@@ -168,7 +283,16 @@
         "FromPort": 0,
         "ToPort": 65535,
         "IpProtocol": "-1",
-        "CidrIp": "192.168.0.0/16",
+        "CidrIp":  {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "BackVPCPrefix"
+              },
+              ".0.0/16"
+            ]
+          ]
+        },
         "GroupId": {
           "Fn::GetAtt": [
             "ControlPlane",
@@ -200,7 +324,7 @@
           ]
         },
         "SubnetId": {
-          "Ref": "SubnetPublicUSEAST2A" 
+          "Ref": "SubnetPublicA" 
         },
         "Tags": [
           {
@@ -226,6 +350,42 @@
         ]
       }
     },
+    "NATPrivateSubnetRouteA": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "NATGateway"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        }
+      }
+    },
+    "NATPrivateSubnetRouteB": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "NATGateway"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        }
+      }
+    },
+    "NATPrivateSubnetRouteC": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "NATGateway"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        }
+      }
+    },
     "TransitGateway" : {
       "Type": "AWS::EC2::TransitGateway",
       "Properties": {
@@ -240,7 +400,9 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "multi-account-tgw"
+            "Value": {
+              "Ref": "TGWName"
+            }
           }
         ]
       }
@@ -297,6 +459,22 @@
         ]
       }
     },
+    "PrivateRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}/PrivateRouteTable"
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
     "PublicRouteTable": {
       "Type": "AWS::EC2::RouteTable",
       "Properties": {
@@ -331,7 +509,23 @@
     "TGWPublicSubnetRoute": { 
       "Type": "AWS::EC2::Route",
       "Properties": {
-        "DestinationCidrBlock": "192.0.0.0/8",
+        "DestinationCidrBlock": {
+          "Fn::Join": [
+            "", [
+              { "Fn::Select": [ 
+                "0", { 
+                  "Fn::Split": [
+                    ".", {
+                      "Ref": "FrontVPCPrefix"
+                      }
+                    ]
+                  }
+                ] 
+              },
+              ".0.0.0/8"
+            ]
+          ]
+        },
         "TransitGatewayId": {
           "Ref": "TransitGateway"
         },
@@ -340,36 +534,155 @@
         }
       }
     },
-    "RouteTableAssociationPublicUSEAST2A": {
-      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    "TGWPrivateSubnetRoute": {
+      "Type": "AWS::EC2::Route",
       "Properties": {
-        "RouteTableId": {
-          "Ref": "PublicRouteTable"
+        "DestinationCidrBlock": {
+          "Fn::Join": [
+            "", [
+              { "Fn::Select": [ 
+                "0", { 
+                  "Fn::Split": [
+                    ".", {
+                      "Ref": "FrontVPCPrefix"
+                      }
+                    ]
+                  }
+                ] 
+              },
+              ".0.0.0/8"
+            ]
+          ]
         },
-        "SubnetId": {
-          "Ref": "SubnetPublicUSEAST2A"
+        "TransitGatewayId": {
+          "Ref": "TransitGateway"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
         }
       }
     },
-    "RouteTableAssociationPublicUSEAST2B": {
-      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+    "TGWPublicSubnetRouteBack": { 
+      "Type": "AWS::EC2::Route",
+      "Condition": "VPCOctetsNoMatch",
       "Properties": {
+        "DestinationCidrBlock": {
+          "Fn::Join": [
+            "", [
+              { "Fn::Select": [ 
+                "0", { 
+                  "Fn::Split": [
+                    ".", {
+                      "Ref": "BackVPCPrefix"
+                      }
+                    ]
+                  }
+                ] 
+              },
+              ".0.0.0/8"
+            ]
+          ]
+        },
+        "TransitGatewayId": {
+          "Ref": "TransitGateway"
+        },
         "RouteTableId": {
           "Ref": "PublicRouteTable"
-        },
-        "SubnetId": {
-          "Ref": "SubnetPublicUSEAST2B"
         }
       }
     },
-    "RouteTableAssociationPublicUSEAST2C": {
+    "TGWPrivateSubnetRouteBack": {
+      "Type": "AWS::EC2::Route",
+      "Condition": "VPCOctetsNoMatch",
+      "Properties": {
+        "DestinationCidrBlock": {
+          "Fn::Join": [
+            "", [
+              { "Fn::Select": [ 
+                "0", { 
+                  "Fn::Split": [
+                    ".", {
+                      "Ref": "BackVPCPrefix"
+                      }
+                    ]
+                  }
+                ] 
+              },
+              ".0.0.0/8"
+            ]
+          ]
+        },
+        "TransitGatewayId": {
+          "Ref": "TransitGateway"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        }
+      }
+    },
+    "RouteTableAssociationPublicA": {
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
       "Properties": {
         "RouteTableId": {
           "Ref": "PublicRouteTable"
         },
         "SubnetId": {
-          "Ref": "SubnetPublicUSEAST2C"
+          "Ref": "SubnetPublicA"
+        }
+      }
+    },
+    "RouteTableAssociationPublicB": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        },
+        "SubnetId": {
+          "Ref": "SubnetPublicB"
+        }
+      }
+    },
+    "RouteTableAssociationPublicC": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
+        },
+        "SubnetId": {
+          "Ref": "SubnetPublicC"
+        }
+      }
+    },
+    "RouteTableAssociationPrivateA": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        },
+        "SubnetId": {
+          "Ref": "SubnetPrivateA"
+        }
+      }
+    },
+    "RouteTableAssociationPrivateB": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        },
+        "SubnetId": {
+          "Ref": "SubnetPrivateB"
+        }
+      }
+    },
+    "RouteTableAssociationPrivateC": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        },
+        "SubnetId": {
+          "Ref": "SubnetPrivateC"
         }
       }
     },
@@ -427,11 +740,29 @@
         ]
       }
     },
-    "SubnetPublicUSEAST2A": {
+    "SubnetPublicA": {
       "Type": "AWS::EC2::Subnet",
       "Properties": {
-        "AvailabilityZone": "us-east-2a",
-        "CidrBlock": "192.170.0.0/19", # param
+        "AvailabilityZone": {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "AWS::Region"
+              },
+              "a"
+            ]
+          ]
+        },
+        "CidrBlock": {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "SharedVPCPrefix"
+              },
+              ".0.0/19"
+            ]
+          ]
+        },
         "MapPublicIpOnLaunch": true,
         "Tags": [
           {
@@ -441,7 +772,7 @@
           {
             "Key": "Name",
             "Value": {
-              "Fn::Sub": "${AWS::StackName}/SubnetPublicUSEAST2A"
+              "Fn::Sub": "${AWS::StackName}/SubnetPublicA"
             }
           }
         ],
@@ -450,11 +781,29 @@
         }
       }
     },
-    "SubnetPublicUSEAST2B": {
+    "SubnetPublicB": {
       "Type": "AWS::EC2::Subnet",
       "Properties": {
-        "AvailabilityZone": "us-east-2b",
-        "CidrBlock": "192.170.32.0/19", # param
+        "AvailabilityZone": {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "AWS::Region"
+              },
+              "b"
+            ]
+          ]
+        },
+        "CidrBlock":  {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "SharedVPCPrefix"
+              },
+              ".32.0/19"
+            ]
+          ]
+        },
         "MapPublicIpOnLaunch": true,
         "Tags": [
           {
@@ -464,7 +813,7 @@
           {
             "Key": "Name",
             "Value": {
-              "Fn::Sub": "${AWS::StackName}/SubnetPublicUSEAST2B"
+              "Fn::Sub": "${AWS::StackName}/SubnetPublicB"
             }
           }
         ],
@@ -473,11 +822,29 @@
         }
       }
     },
-    "SubnetPublicUSEAST2C": {
+    "SubnetPublicC": {
       "Type": "AWS::EC2::Subnet",
       "Properties": {
-        "AvailabilityZone": "us-east-2c",
-        "CidrBlock": "192.170.64.0/19", # param
+        "AvailabilityZone": {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "AWS::Region"
+              },
+              "c"
+            ]
+          ]
+        },
+        "CidrBlock":  {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "SharedVPCPrefix"
+              },
+              ".64.0/19"
+            ]
+          ]
+        },
         "MapPublicIpOnLaunch": true,
         "Tags": [
           {
@@ -487,7 +854,127 @@
           {
             "Key": "Name",
             "Value": {
-              "Fn::Sub": "${AWS::StackName}/SubnetPublicUSEAST2C"
+              "Fn::Sub": "${AWS::StackName}/SubnetPublicC"
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "SubnetPrivateA": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "AWS::Region"
+              },
+              "a"
+            ]
+          ]
+        },
+        "CidrBlock":  {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "SharedVPCPrefix"
+              },
+              ".96.0/19"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "kubernetes.io/role/internal-elb",
+            "Value": "1"
+          },
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}/SubnetPrivateA"
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "SubnetPrivateB": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "AWS::Region"
+              },
+              "b"
+            ]
+          ]
+        },
+        "CidrBlock":  {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "SharedVPCPrefix"
+              },
+              ".128.0/19"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "kubernetes.io/role/internal-elb",
+            "Value": "1"
+          },
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}/SubnetPrivateB"
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "SubnetPrivateC": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "AWS::Region"
+              },
+              "c"
+            ]
+          ]
+        },
+        "CidrBlock":  {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "SharedVPCPrefix"
+              },
+              ".160.0/19"
+            ]
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "kubernetes.io/role/internal-elb",
+            "Value": "1"
+          },
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName}/SubnetPrivateC"
             }
           }
         ],
@@ -499,7 +986,16 @@
     "VPC": {
       "Type": "AWS::EC2::VPC",
       "Properties": {
-        "CidrBlock": "192.170.0.0/16", # param 
+        "CidrBlock": {
+          "Fn::Join": [
+            "", [
+              {
+                "Ref": "SharedVPCPrefix"
+              },
+              ".0.0/16"
+            ]
+          ]
+        },
         "EnableDnsHostnames": true,
         "EnableDnsSupport": true,
         "Tags": [
@@ -544,7 +1040,16 @@
               "Tags": [
                 {
                   "Key": "Name",
-                  "Value": "eks-cluster-shared-nodegroup-Node"
+                  "Value": {
+                    "Fn::Join": [
+                      "",[
+                        {
+                          "Ref": "EKSClusterName"
+                        },
+                        "-nodegroup-Node"
+                      ]
+                    ]
+                  }
                 },
                 {
                   "Key": "alpha.eksctl.io/nodegroup-type",
@@ -567,10 +1072,14 @@
       "Type": "AWS::EKS::Nodegroup",
       "Properties": {
         "AmiType": "AL2_x86_64",
-        "ClusterName": "eks-cluster-shared",
+        "ClusterName": {
+          "Ref": "EKSClusterName"
+        },
         "ForceUpdateEnabled": false,
         "Labels": {
-          "alpha.eksctl.io/cluster-name": "eks-cluster-shared",
+          "alpha.eksctl.io/cluster-name": {
+            "Ref": "EKSClusterName"
+          },
           "alpha.eksctl.io/nodegroup-name": "nodegroup"
         },
         "LaunchTemplate": {
@@ -593,13 +1102,13 @@
         },
         "Subnets": [
           {
-            "Ref": "SubnetPublicUSEAST2A"
+            "Ref": "SubnetPublicA"
           },
           {
-            "Ref": "SubnetPublicUSEAST2B"
+            "Ref": "SubnetPublicB"
           },
           {
-            "Ref": "SubnetPublicUSEAST2C"
+            "Ref": "SubnetPublicC"
           }
         ],
         "Tags": {
@@ -661,14 +1170,34 @@
             "Version": "2012-10-17",
             "Statement": [
                 {
-                    "Effect": "Allow",
-                    "Action": "sts:AssumeRole",
-                    "Resource": "arn:aws:iam::306634600056:role/eks-cluster-frontend-access-role" # param 
+                  "Effect": "Allow",
+                  "Action": "sts:AssumeRole",
+                  "Resource": {
+                    "Fn::Join": [
+                      "", [
+                        "arn:aws:iam::",
+                        {
+                          "Ref": "FrontendAccountId"
+                        },
+                        ":role/eks-cluster-frontend-access-role"
+                      ]
+                    ] 
+                  }
                 },
                 {
-                    "Effect": "Allow",
-                    "Action": "sts:AssumeRole",
-                    "Resource": "arn:aws:iam::523920952363:role/eks-cluster-backend-access-role" # param
+                  "Effect": "Allow",
+                  "Action": "sts:AssumeRole",
+                  "Resource": {
+                    "Fn::Join": [
+                      "", [
+                        "arn:aws:iam::",
+                        {
+                          "Ref": "BackendAccountId"
+                        },
+                        ":role/eks-cluster-backend-access-role"
+                      ]
+                    ]
+                  }
                 }
             ]
           }
@@ -776,13 +1305,36 @@
           ",",
           [
             {
-              "Ref": "SubnetPublicUSEAST2A"
+              "Ref": "SubnetPublicA"
             },
             {
-              "Ref": "SubnetPublicUSEAST2B"
+              "Ref": "SubnetPublicB"
             },
             {
-              "Ref": "SubnetPublicUSEAST2C"
+              "Ref": "SubnetPublicC"
+            }
+          ]
+        ]
+      }
+    },
+    "SubnetsPrivate": {
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}::SubnetsPrivate"
+        }
+      },
+      "Value": {
+        "Fn::Join": [
+          ",",
+          [
+            {
+              "Ref": "SubnetPrivateA"
+            },
+            {
+              "Ref": "SubnetPrivateB"
+            },
+            {
+              "Ref": "SubnetPrivateC"
             }
           ]
         ]
