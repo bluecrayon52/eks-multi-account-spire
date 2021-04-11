@@ -407,6 +407,48 @@
         ]
       }
     },
+    "TGWResourceShare": {
+      "Type": "AWS::RAM::ResourceShare",
+      "Properties": {
+        "Name": "multi-account-tgw-share",
+        "ResourceArns": [
+          {
+            "Fn::Sub": "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:transit-gateway/${TransitGateway}"
+          }
+        ],
+        "Principals": [
+          {
+            "Ref": "FrontendAccountId"
+          },
+          {
+            "Ref": "BackendAccountId"
+          }
+        ]
+      },
+      "DependsOn": "TransitGateway"
+    },
+    "TGWAttachment": {
+      "Type" : "AWS::EC2::TransitGatewayAttachment",
+      "Properties": {
+        "SubnetIds": [
+          {
+            "Ref": "SubnetPublicA"
+          },
+          {
+            "Ref": "SubnetPublicB"
+          },
+          {
+            "Ref": "SubnetPublicC"
+          },
+        ],
+        "TransitGatewayId": {
+          "Ref": "TransitGateway"
+        },
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
     "PolicyCloudWatchMetrics": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
