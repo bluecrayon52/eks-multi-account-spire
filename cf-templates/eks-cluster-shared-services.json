@@ -51,7 +51,7 @@
     },
     "FrontendAccountId": {
       "Type": "String",
-      "AllowedPattern": "^\d{12}$",
+      "AllowedPattern": "^\\d{12}$",
       "ConstraintDescription": "Must be a valid 12 digit numerical account number",
       "MaxLength": 12,
       "MinLength": 12,
@@ -59,22 +59,22 @@
     },
     "BackendAccountId": {
       "Type": "String",
-      "AllowedPattern": "^\d{12}$",
+      "AllowedPattern": "^\\d{12}$",
       "ConstraintDescription": "Must be a valid 12 digit numerical account number",
       "MaxLength": 12,
       "MinLength": 12,
       "Description": "Enter the AccountId of the frontend account."
-    }
+    },
     "SharedVPCPrefix": {
       "Type": "String",
-      "AllowedPattern": "^(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)(\.)(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)$",
+      "AllowedPattern": "^(\\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\\b)(\\.)(\\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\\b)$",
       "ConstraintDescription": "Must be in hex form with each octet ranging from 0 to 255 (example: 192.170)",
       "Default": "192.170",
       "Description": "Enter the 16 bit CIDR prefix for the Shared Services VPC in hex form (example: 192.170)"
     },
     "FrontVPCPrefix": {
       "Type": "String",
-      "AllowedPattern": "^(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)(\.)(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)$",
+      "AllowedPattern": "^(\\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\\b)(\\.)(\\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\\b)$",
       "ConstraintDescription": "Must be in hex form with each octet ranging from 0 to 255 (example: 192.169)",
       "Default": "192.169",
       "Description": "Enter the 16 bit CIDR prefix for the Frontend VPC in hex form (example: 192.169)"
@@ -82,7 +82,7 @@
     },
     "BackVPCPrefix": {
       "Type": "String",
-      "AllowedPattern": "^(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)(\.)(\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\b)$",
+      "AllowedPattern": "^(\\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\\b)(\\.)(\\b(1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])\\b)$",
       "ConstraintDescription": "Must be in hex form with each octet ranging from 0 to 255 (example: 192.168)",
       "Default": "192.168",
       "Description": "Enter the 16 bit CIDR prefix for the Backend VPC in hex form (example: 192.168)"
@@ -273,7 +273,7 @@
             "ControlPlane",
             "ClusterSecurityGroupId"
           ]
-        },
+        }
       }
     },
     "IngressBackendToDefaultClusterSG": {
@@ -298,7 +298,7 @@
             "ControlPlane",
             "ClusterSecurityGroupId"
           ]
-        },
+        }
       }
     },
     "InternetGateway": {
@@ -439,7 +439,7 @@
           },
           {
             "Ref": "SubnetPublicC"
-          },
+          }
         ],
         "TransitGatewayId": {
           "Ref": "TransitGateway"
@@ -1060,7 +1060,7 @@
           "Ref": "VPC"
         }
       }
-    }
+    },
     "LaunchTemplate": {
       "Type": "AWS::EC2::LaunchTemplate",
       "Properties": {
@@ -1070,12 +1070,12 @@
             "HttpPutResponseHopLimit": 2,
             "HttpTokens": "optional"
           },
-          "SecurityGroupIds": [
+          "SecurityGroupIds": [{
             "Fn::GetAtt": [
               "ControlPlane",
               "ClusterSecurityGroupId"
             ]
-          ],
+          }],
           "TagSpecifications": [
             {
               "ResourceType": "instance",
@@ -1207,10 +1207,11 @@
           }
         ],
         "Policies": [
-          "PolicyName": "front-back-assume-role-policy",
-          "PolicyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [
+          {
+            "PolicyName": "front-back-assume-role-policy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
                 {
                   "Effect": "Allow",
                   "Action": "sts:AssumeRole",
@@ -1241,13 +1242,19 @@
                     ]
                   }
                 }
-            ]
+              ]
+            }
           }
         ]
       }
     }
   },
   "Outputs": {
+    "TransitGatewayId": {
+      "Valiue": {
+        "Ref": "TransitGateway"
+      }
+    },
     "ARN": {
       "Export": {
         "Name": {
