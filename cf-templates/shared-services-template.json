@@ -23,31 +23,13 @@
   "Parameters": {
     "EKSClusterName": {
       "Type": "String",
-      "Default": {
-        "Fn::Join": [
-          "", [
-            "eks-cluster-shared-",
-            {
-              "Ref": "AWS::AccountId"
-            }
-          ]
-        ]
-      },
-      "Description": "Enter the name of the shared-services EKS cluster."
+      "Default": "eks-cluster-shared",
+      "Description": "Enter the name of the Shared Services EKS cluster."
     },
     "TGWName": {
       "Type": "String", 
-      "Default": {
-        "Fn::Join": [
-          "", [
-            "tgw-shared-",
-            {
-              "Ref": "AWS::AccountId"
-            }
-          ]
-        ]
-      },
-      "Description": "Enter the name of the shared-services Transit Gateway."
+      "Default": "tgw-shared",
+      "Description": "Enter the name of the Shared Services Transit Gateway."
     },
     "FrontendAccountId": {
       "Type": "String",
@@ -55,7 +37,7 @@
       "ConstraintDescription": "Must be a valid 12 digit numerical account number",
       "MaxLength": 12,
       "MinLength": 12,
-      "Description": "Enter the AccountId of the frontend account."
+      "Description": "Enter the Account ID of the Frontend account."
     },
     "BackendAccountId": {
       "Type": "String",
@@ -63,7 +45,7 @@
       "ConstraintDescription": "Must be a valid 12 digit numerical account number",
       "MaxLength": 12,
       "MinLength": 12,
-      "Description": "Enter the AccountId of the frontend account."
+      "Description": "Enter the Account ID of the Backend account."
     },
     "SharedVPCPrefix": {
       "Type": "String",
@@ -251,7 +233,7 @@
         "ToPort": 65535
       }
     },
-    "IngressFronendToDefaultClusterSG": {
+    "IngressFrontendToDefaultClusterSG": {
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
         "Description": "Allow traffic from Frontend EKS Cluster (all ports)",
@@ -350,31 +332,7 @@
         ]
       }
     },
-    "NATPrivateSubnetRouteA": {
-      "Type": "AWS::EC2::Route",
-      "Properties": {
-        "DestinationCidrBlock": "0.0.0.0/0",
-        "NatGatewayId": {
-          "Ref": "NATGateway"
-        },
-        "RouteTableId": {
-          "Ref": "PrivateRouteTable"
-        }
-      }
-    },
-    "NATPrivateSubnetRouteB": {
-      "Type": "AWS::EC2::Route",
-      "Properties": {
-        "DestinationCidrBlock": "0.0.0.0/0",
-        "NatGatewayId": {
-          "Ref": "NATGateway"
-        },
-        "RouteTableId": {
-          "Ref": "PrivateRouteTable"
-        }
-      }
-    },
-    "NATPrivateSubnetRouteC": {
+    "NATPrivateSubnetRoute": {
       "Type": "AWS::EC2::Route",
       "Properties": {
         "DestinationCidrBlock": "0.0.0.0/0",
@@ -574,7 +532,8 @@
         "RouteTableId": {
           "Ref": "PublicRouteTable"
         }
-      }
+      },
+      "DependsOn" : "TGWAttachment"
     },
     "TGWPrivateSubnetRoute": {
       "Type": "AWS::EC2::Route",
@@ -602,7 +561,8 @@
         "RouteTableId": {
           "Ref": "PrivateRouteTable"
         }
-      }
+      },
+      "DependsOn" : "TGWAttachment"
     },
     "TGWPublicSubnetRouteBack": { 
       "Type": "AWS::EC2::Route",
@@ -631,7 +591,8 @@
         "RouteTableId": {
           "Ref": "PublicRouteTable"
         }
-      }
+      },
+      "DependsOn" : "TGWAttachment"
     },
     "TGWPrivateSubnetRouteBack": {
       "Type": "AWS::EC2::Route",
@@ -660,7 +621,8 @@
         "RouteTableId": {
           "Ref": "PrivateRouteTable"
         }
-      }
+      },
+      "DependsOn" : "TGWAttachment"
     },
     "RouteTableAssociationPublicA": {
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
@@ -1251,7 +1213,7 @@
   },
   "Outputs": {
     "TransitGatewayId": {
-      "Valiue": {
+      "Value": {
         "Ref": "TransitGateway"
       }
     },
