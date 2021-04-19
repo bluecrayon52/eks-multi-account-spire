@@ -1115,6 +1115,33 @@
             }
           ]
         }
+      },
+      "CrossAccountAccessRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+            "AssumeRolePolicyDocument": {
+                "Statement": [  
+                    {
+                    "Action": [
+                        "sts:AssumeRole"
+                    ],
+                    "Effect": "Allow",
+                    "Principal": {
+                        "AWS": {
+                            "Ref": "NodeInstanceRoleArn"
+                        }
+                    }
+                    }
+                ],
+                "Version": "2012-10-17"
+            },
+            "Tags": [
+                {
+                  "Key": "Name",
+                  "Value": "eks-cluster-frontend-access-role"
+                }
+            ]
+        }
       }
     },
     "Outputs": {
