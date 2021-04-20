@@ -56,6 +56,10 @@
         "Default": "192.168",
         "Description": "Enter the 16 bit CIDR prefix for the Backend VPC in hex form (example: 192.168)"
   
+      },
+      "NodeInstanceRoleArn": {
+          "Type": "String",
+          "Description": "Enter the ARN of the Shared Services node instance role"
       }
     },
     "Conditions": {
@@ -1119,28 +1123,23 @@
       "CrossAccountAccessRole": {
         "Type": "AWS::IAM::Role",
         "Properties": {
+            "RoleName": "eks-cluster-frontend-access-role",
             "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
                 "Statement": [  
                     {
-                    "Action": [
-                        "sts:AssumeRole"
-                    ],
-                    "Effect": "Allow",
-                    "Principal": {
-                        "AWS": {
-                            "Ref": "NodeInstanceRoleArn"
-                        }
+                        "Effect": "Allow",
+                        "Principal": {
+                            "AWS": {
+                                "Ref": "NodeInstanceRoleArn"
+                            }
+                        },
+                        "Action": [
+                            "sts:AssumeRole"
+                        ]
                     }
-                    }
-                ],
-                "Version": "2012-10-17"
-            },
-            "Tags": [
-                {
-                  "Key": "Name",
-                  "Value": "eks-cluster-frontend-access-role"
-                }
-            ]
+                ]
+            }
         }
       }
     },
