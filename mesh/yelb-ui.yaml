@@ -16,7 +16,7 @@ spec:
       hostname: yelb-ui.yelb.svc.cluster.local
   backends:
     - virtualService:
-       virtualServiceARN: # <yelb-appserver virtualServiceARN>
+       virtualServiceARN: ${VS_ARN}
   backendDefaults:
     clientPolicy:
       tls:
