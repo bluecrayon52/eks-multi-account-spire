@@ -16,7 +16,23 @@ spec:
       hostname: yelb-ui.yelb.svc.cluster.local
   backends:
     - virtualService:
-       virtualServiceARN: <yelb-appserver virtualServiceARN>
+       virtualServiceARN: # <yelb-appserver virtualServiceARN>
+  backendDefaults:
+    clientPolicy:
+      tls:
+        enforce: true
+        mode: STRICT
+        certificate:
+          sds:
+            secretName: spiffe://am-multi-account-mesh/frontend
+        validation:
+          trust:
+            sds:
+              secretName: spiffe://am-multi-account-mesh
+          subjectAlternativeNames:
+            match:
+              exact:
+              - spiffe://am-multi-account-mesh/yelbapp
 
 ---
 apiVersion: appmesh.k8s.aws/v1beta2

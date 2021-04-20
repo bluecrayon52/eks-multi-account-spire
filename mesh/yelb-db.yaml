@@ -11,6 +11,19 @@ spec:
     - portMapping:
         port: 5432
         protocol: tcp
+      tls:
+        mode: STRICT
+        certificate:
+          sds:
+            secretName: spiffe://am-multi-account-mesh/yelbdb
+        validation:
+          trust:
+            sds:
+              secretName: spiffe://am-multi-account-mesh
+          subjectAlternativeNames:
+            match:
+              exact:
+              - spiffe://am-multi-account-mesh/yelbapp 
   serviceDiscovery:
     dns:
       hostname: yelb-db.yelb.svc.cluster.local

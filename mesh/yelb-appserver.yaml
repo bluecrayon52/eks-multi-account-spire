@@ -10,7 +10,20 @@ spec:
   listeners:
     - portMapping:
         port: 4567
-        protocol: http  
+        protocol: http
+      tls:
+        mode: STRICT
+        certificate:
+          sds:
+            secretName: spiffe://am-multi-account-mesh/yelbapp
+        validation:
+          trust:
+            sds:
+              secretName: spiffe://am-multi-account-mesh
+          subjectAlternativeNames:
+            match:
+              exact:
+              - spiffe://am-multi-account-mesh/frontend 
   serviceDiscovery:
     awsCloudMap:
       namespaceName: am-multi-account.local
@@ -22,6 +35,23 @@ spec:
     - virtualService:
        virtualServiceRef:
           name: redis-server
+  backendDefaults:
+    clientPolicy:
+      tls:
+        enforce: true
+        mode: STRICT
+        certificate:
+          sds:
+            secretName: spiffe://am-multi-account-mesh/yelbapp
+        validation:
+          trust:
+            sds:
+              secretName: spiffe://am-multi-account-mesh
+          subjectAlternativeNames:
+            match:
+              exact:
+              - spiffe://am-multi-account-mesh/yelbdb
+              - spiffe://am-multi-account-mesh/redis
 ---
 apiVersion: appmesh.k8s.aws/v1beta2
 kind: VirtualRouter
