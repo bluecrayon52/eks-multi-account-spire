@@ -1,2 +1,5 @@
 # ignore virtual node with virtual service ARN
 /mesh/yelb-ui-final.yaml
+
+#ignore App mesh spec file
+/helper-scripts/app-mesh.yaml
