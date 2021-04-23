@@ -12,6 +12,15 @@ for PROFILE in frontend backend shared
             kubectl config use-context $BACK_CXT
         fi
 
+        if [ "$PROFILE" == "backend" ]; then 
+            echo "Deleting the Cloud Map namespace am-multi-account.local..."
+            aws --profile backend servicediscovery get-operation \
+              --operation-id $(aws --profile backend servicediscovery delete-namespace \
+              --id $(aws --profile backend servicediscovery list-namespaces \
+              | jq -r '.Namespaces[] | select(.Name=="am-multi-account.local").Id') \
+              | jq -r '.OperationId') > /dev/null
+        fi
+
         echo "Deleting the App Mesh am-multi-account-mesh..."
         kubectl delete mesh am-multi-account-mesh
 

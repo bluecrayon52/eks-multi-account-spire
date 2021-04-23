@@ -4,15 +4,15 @@ set -e
 MESH_OWNER=$(aws --profile shared sts get-caller-identity | jq -r .Account)
 
 cat << EOF > app-mesh.yaml
-  apiVersion: appmesh.k8s.aws/v1beta2
-  kind: Mesh
-  metadata:
-    name: am-multi-account-mesh
-  spec:
-    meshOwner: "${MESH_OWNER}"
-    namespaceSelector:
-      matchLabels:
-        mesh: am-multi-account-mesh
+apiVersion: appmesh.k8s.aws/v1beta2
+kind: Mesh
+metadata:
+  name: am-multi-account-mesh
+spec:
+  meshOwner: "${MESH_OWNER}"
+  namespaceSelector:
+    matchLabels:
+      mesh: am-multi-account-mesh
 EOF
 
 for PROFILE in shared frontend backend
@@ -90,4 +90,10 @@ for PROFILE in shared frontend backend
               --principals $(aws --profile frontend sts get-caller-identity | jq -r .Account) \
               $(aws --profile backend sts get-caller-identity | jq -r .Account) > /dev/null
         fi
+
+        if [ "$PROFILE" == "backend" ]; then
+            echo "Creating the Cloud Map namespace am-multi-account.local..."
+            aws --profile backend servicediscovery create-http-namespace \
+              --name am-multi-account.local > /dev/null
+        fi 
     done

@@ -1,5 +1,19 @@
 # ignore virtual node with virtual service ARN
-/mesh/yelb-ui-final.yaml
+**/yelb-ui-final.yaml
 
 #ignore App mesh spec file
-/helper-scripts/app-mesh.yaml
+**/app-mesh.yaml
+
+# ignore kubeconfig for frontend cluster authentication
+**/front_config
+
+# ignore kubeconfig for backend cluster authentication
+**/back_config
+
+# ignore frontend kubeconfig ConfigMap 
+**/front_kubeconfig.yaml
+
+# ignore backend kubeconfig ConfigMap
+**/back_kubeconfig.yaml 
+
+
