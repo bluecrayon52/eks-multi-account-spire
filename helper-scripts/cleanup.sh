@@ -12,6 +12,12 @@ for PROFILE in frontend backend shared
             kubectl config use-context $BACK_CXT
         fi
 
+        # echo "Deleting the yelb namespace..."
+        # kubectl delete ns yelb
+
+        # echo "Deleting the spire namespace..."
+        # kubectl delete ns spire
+
         if [ "$PROFILE" == "backend" ]; then 
             echo "Deleting the Cloud Map namespace am-multi-account.local..."
             aws --profile backend servicediscovery get-operation \
@@ -48,7 +54,4 @@ for PROFILE in frontend backend shared
 
         echo "Deleting the appmesh-system namespace..."
         kubectl delete namespace appmesh-system
-
-        echo "Deleting the yelb namespace..."
-        kubectl delete ns yelb
     done 
