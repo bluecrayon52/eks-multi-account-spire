@@ -35,6 +35,7 @@ The following tables lists the configurable parameters of the chart and their de
 
 Parameter | Description | Default
 --- | --- | ---
+`config.clusterName` | cluster name use for k8s_psat node attestation | `k8s-cluster`
 `config.trustDomain` | SPIRE Trust Domain | `appmesh.aws`
 `config.logLevel` | Log Level | `DEBUG`
 `config.serverAddress` | SPIRE Server Address | `spire-server`
