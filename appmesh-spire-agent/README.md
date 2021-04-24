@@ -1,20 +1,15 @@
-# Sample App Mesh SPIRE Agent
+# App Mesh SPIRE Agent for multi-account mTLS trust domain 
 
-Sample App Mesh SPIRE Agent Helm chart for Kubernetes
-
-## Installing the Chart
-
-Add the EKS repository to Helm:
+## Install App Mesh SPIRE Agent:
 
 ```sh
-helm repo add eks https://aws.github.io/eks-charts
-```
-
-Install App Mesh SPIRE Agent:
-
-```sh
-helm upgrade -i appmesh-spire-agent eks/appmesh-spire-agent \
---namespace spire
+helm install appmesh-spire-agent eks-multi-account-spire/appmesh-spire-agent \
+  --namespace spire \
+  --set serviceAccount.name=spire-agent-front \
+  --set config.clusterName=frontend-k8s-cluster \
+  --set config.trustDomain=am-multi-account-mesh \
+  --set config.serverAddress=$(kubectl get pod/spire-server-0 -n spire -o json \
+  --context $SHARED_CXT | jq -r '.status.podIP')
 ```
 
 The [configuration](#configuration) section lists the parameters that can be configured during installation.

@@ -1,20 +1,11 @@
-# Sample App Mesh SPIRE Server
+# App Mesh SPIRE Server for multi-account mTLS trust domain 
 
-Sample App Mesh SPIRE Server Helm chart for Kubernetes
-
-## Installing the Chart
-
-Add the EKS repository to Helm:
+## Install App Mesh SPIRE Server:
 
 ```sh
-helm repo add eks https://aws.github.io/eks-charts
-```
-
-Install App Mesh SPIRE Server:
-
-```sh
-helm upgrade -i appmesh-spire-server eks/appmesh-spire-server \
---namespace spire
+helm install appmesh-spire-server eks-multi-account-spire/appmesh-spire-server \
+  --namespace spire \
+  --set config.trustDomain=am-multi-account-mesh
 ```
 
 The [configuration](#configuration) section lists the parameters that can be configured during installation.
