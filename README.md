@@ -71,6 +71,9 @@ aws --profile shared cloudformation deploy \
  --parameter-overrides \
    FrontendAccountId=$(aws --profile frontend sts get-caller-identity | jq -r '.Account') \
    BackendAccountId=$(aws --profile backend sts get-caller-identity | jq -r '.Account')
+
+aws --profile shared cloudformation wait stack-create-complete \
+ --stack-name ks-cluster-shared-services-stack
 ```
 This CloudFormation stack will create the following resources: 
 - a new EKS cluster named **eks-cluster-shared** 
@@ -362,6 +365,8 @@ Selector
 ```
 The other entries for the frontend and backend workloads (the **yelb-ui**, **yelb-appserver**, **yelb-db**, and **redis-server**) reference the [SPIFFE ID](https://spiffe.io/docs/latest/spiffe-about/spiffe-concepts/#spiffe-id) of the corresponding SPIRE agent as the value of their Parent ID.  The SPIRE server will share the list of registered entries with the SPIRE agents, who will then use it to determine what SPIFFE Verifiable Identity Document ([SVID](http://spiffe%20verifiable%20identity%20document%20%28svid%29/)) it needs to issue to a particular workload, assuming there’s a match with the specified namespace, service account, pod label, and container name combination. 
 
+**Note:** an SVID is not a new type of public key certificate, rather it defines a standard in which an X.509 certificates are used. for more information, see the [SVID specification](https://github.com/spiffe/spiffe/blob/master/standards/X509-SVID.md). 
+
 ---
 ## Deploy the mesh resources and the Yelb Application:
 
@@ -425,13 +430,13 @@ backends:
 
 ...
 ```
-The certificate section under tls specifies the Envoy Secret Discovery Service ([SDS](https://www.envoyproxy.io/docs/envoy/latest/configuration/security/secret)) secret name, which in this case is the SPIFFE ID that was assigned to the workload. The validation section specifies the trust domain, which is the AWS App Mesh service mesh created and shared earlier (**am-multi-account-mesh**).
+The certificate section under tls specifies the Envoy Secret Discovery Service ([SDS](https://www.envoyproxy.io/docs/envoy/latest/configuration/security/secret)) secret name, which in this case is the SPIFFE ID that was assigned to the workload. The validation section includes the SPIFFE ID of the trust domain, which is the AWS App Mesh service mesh created earlier (**am-multi-account-mesh**), and a list of  SPIFFE IDs associated with trusted services that are used as subject alternative name matchers for verifying presented certificates. 
 
 Now deploy the backend Kubernetes resources that the virtual nodes point to:  
 ```bash
 kubectl apply -f eks-multi-account-spire/yelb/resources_backend.yaml
 ```
-Before deploying the frontend virtual node and virtual service for the yelb-ui service, run the following helper script to retrieve the ARN of the yelb-appserver virtual service from the backend EKS cluster and create an updated version of the yelb-ui virtual node spec file (*yelb-ui-final.yaml*) containing that ARN as a reference.
+Before deploying the frontend virtual node and virtual service for the yelb-ui service, run the following helper script to retrieve the ARN of the yelb-appserver virtual service from the backend EKS cluster and create an updated version of the yelb-ui virtual node spec file (**yelb-ui-final.yaml**) containing that ARN as a reference.
 ```bash
 kubectl config use-context $FRONT_CXT
 
@@ -454,7 +459,62 @@ You should see the following page load and be able to vote on the different rest
 <img src="images/yelb-ui.png" width="800">
 
 ---
-## Verify the mTLS handshakes:
+## Verify the mTLS Authentication:
+
+After executing a few voting transactions via the yelb-ui, you can now move on to validating the mTLS authentication that take place between each of the Envoy proxies for the underlying services. For this, will query the [administrative interface](https://www.envoyproxy.io/docs/envoy/latest/operations/admin) that Envoy exposes. 
+
+Start by switching to the frontend context and setting an environment variable to hold the name of the yelb_ui pod:
+```bash
+kubectl config use-context $FRONT_CXT
+
+FRONT_POD=$(kubectl get pod -l "app=yelb-ui" -n yelb \
+ --output=jsonpath={.items..metadata.name}) 
+ 
+echo $FRONT_POD
+```
+Check that the Secret Discovery Service (SDS) is active and healthy:
+```bash
+kubectl exec -it $FRONT_POD -n yelb -c envoy \
+ -- curl http://localhost:9901/clusters | grep -E \
+ '(static_cluster_sds.*cx_active|static_cluster_sds.*healthy)'
+ ```
+You should see one active connection, indicating that the SPIRE agent is correctly configured as an SDS provider for the Envoy proxy, along with a healthy status.
+```bash
+static_cluster_sds_unix_socket::/run/spire/sockets/agent.sock::cx_active::1
+static_cluster_sds_unix_socket::/run/spire/sockets/agent.sock::health_flags::healthy
+```
+Next, check the loaded TLS certificate:
+```bash
+kubectl exec -it $FRONT_POD -n yelb -c envoy \
+ -- curl http://localhost:9901/certs
+```
+This certificate is the X509-SVID issued to the yelb-ui service. You should see two SPIFFE IDs listed, that of the trust domain in the ca_cert section, and that of the yelb-ui service listed in the cert_chain section. 
+
+**Note:** App Mesh doesn't store the certificates or private keys that are used for mutual TLS authentication. Instead, Envoy stores them in memory.
+
+Now check the SSL handshakes:
+```bash
+kubectl exec -it $FRONT_POD -n yelb -c envoy \
+ -- curl http://localhost:9901/stats | grep ssl.handshake
+```
+An SSL handshake is executed between the yelb-ui ** and the ** yelb-appserver ** (via the Envoy proxies) for every API request triggered. For example, when the Yelb webpage is loaded, two GET requests (**/getvotes** and **/getstats**) trigger the execution of two corresponding SSL handshakes.  
+
+You can repeat the same process using the backend context to examine mTLS authentication for the other services. For example, you can also check the SSL handshakes for the yelb-appserver: 
+```bash
+kubectl config use-context $BACK_CXT
+ 
+BE_POD_APP=$(kubectl get pod -l "app=yelb-appserver" -n yelb \
+ --output=jsonpath={.items..metadata.name})
+ 
+kubectl exec -it $BE_POD_APP -n yelb -c envoy \
+ -- curl http://localhost:9901/stats | grep ssl.handshake
+ ```
+ In this case, you’ll notice that additional SSL handshakes are being executed with the yelb-db and yelb-redis services as well.
+ ```bash
+cluster.cds_egress_am-multi-account-mesh_redis-server_yelb_tcp_6379.ssl.handshake: 3
+cluster.cds_egress_am-multi-account-mesh_yelb-db_yelb_tcp_5432.ssl.handshake: 58
+listener.0.0.0.0_15000.ssl.handshake: 13
+```
 ---
 ## Cleanup:
 Run the following helper script to delete all resources in the yelb and spire namespaces, the Cloud Map am-multi-account.local namespace, the App Mesh am-multi-account-mesh service mesh, the appmesh-controller, and the appmesh-system namespace. 
@@ -465,14 +525,21 @@ Now delete the CloudFormation stacks, starting with the frontend account:
 ```bash
 aws --profile frontend cloudformation delete-stack \
   --stack-name eks-cluster-frontend-stack
+
+aws --profile frontend cloudformation wait stack-delete-complete \
+ --stack-name eks-cluster-frontend-stack
 ```
 Delete the backend CloudFormation stack:
 ```bash
 aws --profile backend cloudformation delete-stack \
   --stack-name eks-cluster-backend-stack
+
+aws --profile backend cloudformation wait stack-delete-complete \
+ --stack-name eks-cluster-backend-stack
 ```
 Finally, delete the shared services CloudFormation stack:
 ```bash
 aws --profile shared cloudformation delete-stack \
   --stack-name eks-cluster-shared-services-stack 
 ```
+---
